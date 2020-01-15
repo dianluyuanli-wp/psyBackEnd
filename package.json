@@ -1,0 +1,22 @@
+{
+    "name": "apitest",
+    "version": "0.0.0",
+    "private": true,
+    "sideEffects": false,
+    "scripts": {
+        "start": "node app.js"
+    },
+    "dependencies": {
+        "@babel/core": "^7.1.2",
+        "@babel/plugin-transform-modules-commonjs": "^7.2.0",
+        "@babel/register": "^7.0.0",
+        "@babel/runtime-corejs2": "^7.3.4",
+        "body-parser": "^1.18.3",
+        "cookie-parser": "^1.4.4",
+        "express": "^4.16.4",
+        "mongoose": "^5.4.0",
+        "socket.io": "^2.2.0",
+        "xiaohuli-package": "^1.0.7"
+    },
+    "devDependencies": {}
+}
