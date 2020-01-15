@@ -4,6 +4,7 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 let mongoose = require('mongoose');
 let ownTool = require('xiaohuli-package');
+let { Animal, BookInfo } = require('./modle');
 
 app.use(bodyParser.json());
 app.use(cookieParser());
@@ -28,13 +29,6 @@ db.once('open', function() {
   // we're connected!
   console.log('success!');
 });
-
-let animalSchema = new mongoose.Schema({
-    name:String,
-    type:String
-});
-let Animal=mongoose.model("Animal",animalSchema);
-
 
 //写个接口123 get请求
 const apiPrefix = '/api';
