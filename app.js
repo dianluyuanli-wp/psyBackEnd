@@ -30,6 +30,21 @@ db.once('open', function() {
   console.log('success!');
 });
 
+var domain = 'https://api.weixin.qq.com/sns/jscode2session';
+var para = {
+    appid: 'wx8b27b1c81eecd334',
+    secret: '58684ee887a900d5de93bb1f21419151',
+    js_code: "061yVwth2Rc6cD0YqLqh2DDFth2yVwtB",
+    grant_type: 'authorization_code'
+}
+
+const getOpenId = async() => {
+    let a = await ownTool.netModel.get(domain, para, {});
+    console.log(a);
+}
+
+//getOpenId();
+
 //写个接口123 get请求
 const apiPrefix = '/api';
 app.get(apiPrefix + '/123', async function(req,res){

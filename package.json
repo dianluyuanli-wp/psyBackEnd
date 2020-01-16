@@ -16,7 +16,7 @@
         "express": "^4.16.4",
         "mongoose": "^5.4.0",
         "socket.io": "^2.2.0",
-        "xiaohuli-package": "^1.0.7"
+        "xiaohuli-package": "^1.0.9"
     },
     "devDependencies": {}
 }
