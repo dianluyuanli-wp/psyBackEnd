@@ -38,10 +38,36 @@ var para = {
     grant_type: 'authorization_code'
 }
 
+//  获取用户全局唯一标识openId
 const getOpenId = async() => {
     let a = await ownTool.netModel.get(domain, para, {});
     console.log(a);
 }
+
+const getAccessToken = async() => {
+    const domain = 'https://api.weixin.qq.com/cgi-bin/token';
+    let a = await ownTool.netModel.get(domain, {
+        grant_type: 'client_credential',
+        appid: 'wx8b27b1c81eecd334',
+        secret: '58684ee887a900d5de93bb1f21419151'
+    });
+    let access_token = a.access_token;
+    console.log(access_token);
+    queryRecord(access_token);
+    //console.log(a);
+}
+
+const queryRecord = async(token) => {
+    const doamin = 'https://api.weixin.qq.com/tcb/databasequery?access_token=' + token;
+    let a = await ownTool.netModel.post(doamin, {
+        //access_token: token,
+        env: 'test-container-ojiv6',
+        query: 'db.collection(\"user\").where({name:"wang"}).get()'
+    })
+    console.log(a);
+}
+
+getAccessToken();
 
 //getOpenId();
 
