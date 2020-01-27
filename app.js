@@ -142,7 +142,7 @@ app.post(apiPrefix + '/login', async function(req,res){
             type,
             currentAuthority: 'user',
             //  用户请求的鉴权token
-            accessToken: jwt.encode(req.body, secret)
+            accessToken: jwt.encode(Object.assign({ tokenTimeStamp: Date.now() }, req.body), secret)
         });
     } else {
         res.send({
@@ -154,7 +154,7 @@ app.post(apiPrefix + '/login', async function(req,res){
     }
 });
 const aa = {
-    name: 'Serati Ma',
+    name: 'wang',
     avatar: 'https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png',
     userid: '00000001',
     email: 'antdesign@alipay.com',
@@ -204,6 +204,15 @@ const aa = {
     phone: '0752-268888888',
 };
 
+const errorSend = (res) => {
+    res.send({
+        response: {
+            status: '401',
+            url: '报错'
+        },
+    });
+}
+
 //拉取用户信息接口 
 app.post(apiPrefix + '/currentUser', async function(req,res){
     let answer = '';
@@ -211,9 +220,7 @@ app.post(apiPrefix + '/currentUser', async function(req,res){
     const wxToken = await getToken();
     console.log(req.body, 'body');
     const doamin = 'https://api.weixin.qq.com/tcb/databasequery?access_token=' + wxToken;
-    const obj = token ? jwt.decode(token, secret) : {};
-    const decodeName = obj.name;
-    if (decodeName === name) {
+    if (verifyToken(req.body)) {
         // let a = await ownTool.netModel.post(doamin, {
         //     //access_token: token,
         //     env: 'test-psy-qktuk',
@@ -221,10 +228,30 @@ app.post(apiPrefix + '/currentUser', async function(req,res){
         // })
         res.send(aa);
     } else {
-        res.send({
-            status: '401',
-            url: '报错'
-        });
+        errorSend(res);
+    }
+});
+
+const outOfDatePeriod = 2 * 60 * 60 * 1000;
+
+const verifyToken = ({name, token = ''}) => {
+    const res =  token ? jwt.decode(token, secret) : {};
+    console.log(res, name);
+    return res.userName === name && (res.tokenTimeStamp + outOfDatePeriod) > Date.now();
+}
+
+app.post(apiPrefix + '/getInterviewerList', async function(req,res){
+    const wxToken = await getToken();
+    const doamin = 'https://api.weixin.qq.com/tcb/databasequery?access_token=' + wxToken;
+    if (verifyToken(req.body)) {
+        const result = await ownTool.netModel.post(doamin, {
+            //access_token: token,
+            env: 'test-psy-qktuk',
+            query: 'db.collection(\"interviewee\").where({"userInfo.nickName":"' + '日出君' + '"}).get()'
+        })
+        res.send(result);
+    } else {
+        errorSend(res);
     }
 });
  
