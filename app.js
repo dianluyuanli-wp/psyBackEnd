@@ -213,6 +213,39 @@ const errorSend = (res) => {
     });
 }
 
+//  添加一个预约时段
+app.post(apiPrefix + '/addPeriod', async function(req,res){
+    const wxToken = await getToken();
+    const doamin = 'https://api.weixin.qq.com/tcb/databaseadd?access_token=' + wxToken;
+    if (verifyToken(req.body)) {
+        const { token, name, ...rest } = req.body;
+        let a = await ownTool.netModel.post(doamin, 
+            {
+                env: 'test-psy-qktuk',
+                query: 'db.collection(\"period\").add({ data: ' + JSON.stringify(rest) +'})'
+            }
+        )
+        res.send(a);
+    } else {
+        errorSend(res);
+    }
+});
+
+//拉取当前用户的时段
+app.post(apiPrefix + '/queryPeriod', async function(req,res){
+    const wxToken = await getToken();
+    const doamin = 'https://api.weixin.qq.com/tcb/databasequery?access_token=' + wxToken;
+    if (verifyToken(req.body)) {
+        let a = await ownTool.netModel.post(doamin, {
+            env: 'test-psy-qktuk',
+            query: 'db.collection(\"period\").where({counselorId:"' + req.body.counselorId + '"}).get()'
+        })
+        res.send(a);
+    } else {
+        errorSend(res);
+    }
+});
+
 //拉取用户信息接口 
 app.post(apiPrefix + '/currentUser', async function(req,res){
     let answer = '';
@@ -247,7 +280,7 @@ app.post(apiPrefix + '/getInterviewerList', async function(req,res){
         const result = await ownTool.netModel.post(doamin, {
             //access_token: token,
             env: 'test-psy-qktuk',
-            query: 'db.collection(\"interviewee\").where({"userInfo.nickName":"' + '日出君' + '"}).get()'
+            query: 'db.collection(\"interviewee\").where({counselorId:"' + req.body.name + '"}).get()'
         })
         res.send(result);
     } else {
