@@ -236,9 +236,11 @@ app.post(apiPrefix + '/queryPeriod', async function(req,res){
     const wxToken = await getToken();
     const doamin = 'https://api.weixin.qq.com/tcb/databasequery?access_token=' + wxToken;
     if (verifyToken(req.body)) {
+        const { offset, size } = req.body;
         let a = await ownTool.netModel.post(doamin, {
             env: 'test-psy-qktuk',
-            query: 'db.collection(\"period\").where({counselorId:"' + req.body.counselorId + '"}).get()'
+            query: 'db.collection(\"period\").where({counselorId:"' + req.body.counselorId + '"}).' +
+            'skip(' + offset +').limit(' + size + ').orderBy("date","desc").get()'
         })
         res.send(a);
     } else {
@@ -269,7 +271,6 @@ const outOfDatePeriod = 2 * 60 * 60 * 1000;
 
 const verifyToken = ({name, token = ''}) => {
     const res =  token ? jwt.decode(token, secret) : {};
-    console.log(res, name);
     return res.userName === name && (res.tokenTimeStamp + outOfDatePeriod) > Date.now();
 }
 
