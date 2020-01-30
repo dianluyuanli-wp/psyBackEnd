@@ -8,6 +8,7 @@ let { Animal, BookInfo } = require('./modle');
 
 var jwt = require('jwt-simple');
 const secret = 'xiaohuli';
+const apiPrefix = '/api';
 
 app.use(bodyParser.json());
 app.use(cookieParser());
@@ -47,12 +48,6 @@ var para = {
     grant_type: 'authorization_code'
 }
 
-//  获取用户全局唯一标识openId
-const getOpenId = async() => {
-    let a = await ownTool.netModel.get(domain, para, {});
-    console.log(a);
-}
-
 const getAccessToken = async() => {
     const domain = 'https://api.weixin.qq.com/cgi-bin/token';
     return await ownTool.netModel.get(domain, {
@@ -62,36 +57,7 @@ const getAccessToken = async() => {
     });
 }
 
-const queryRecord = async(token) => {
-    const doamin = 'https://api.weixin.qq.com/tcb/databasequery?access_token=' + token;
-    let a = await ownTool.netModel.post(doamin, {
-        //access_token: token,
-        env: 'test-container-ojiv6',
-        query: 'db.collection(\"user\").where({name:"wang"}).get()'
-    })
-    console.log(a);
-}
-
 getAccessToken();
-
-//写个接口获取token get请求
-const apiPrefix = '/api';
-app.get(apiPrefix + '/getToken', async function(req,res){
-    let ans = '';
-    let { token, period, getTimeStamp} = accessObj;
-    const nowTiemStamp = Date.now();
-    if (token && (nowTiemStamp < (getTimeStamp + period * 1000))) {
-        ans = token;
-    } else {
-        const { access_token, expires_in } = await getAccessToken();
-        accessObj.token = access_token;
-        accessObj.getTimeStamp = nowTiemStamp;
-        accessObj.period = expires_in;
-        ans = access_token;
-    }
-    res.status(200),
-    res.json(ans)
-});
 
 const getToken = async () => {
     let { token, period, getTimeStamp} = accessObj;
@@ -111,9 +77,7 @@ const getToken = async () => {
 
 //写个接口123 get请求
 app.post(apiPrefix + '/query', async function(req,res){
-    let answer = '';
     const token = await getToken();
-    console.log(req.body, 'body');
     const doamin = 'https://api.weixin.qq.com/tcb/databasequery?access_token=' + token;
     let a = await ownTool.netModel.post(doamin, {
         //access_token: token,
@@ -129,10 +93,8 @@ app.post(apiPrefix + '/login', async function(req,res){
     let answer = '';
     const { password, userName, type } = req.body;
     const token = await getToken();
-    console.log(req.body, 'body');
     const doamin = 'https://api.weixin.qq.com/tcb/databasequery?access_token=' + token;
     let a = await ownTool.netModel.post(doamin, {
-        //access_token: token,
         env: 'test-psy-qktuk',
         query: 'db.collection(\"user\").where({name:"' + userName + '"}).get()'
     })
@@ -231,6 +193,24 @@ app.post(apiPrefix + '/addPeriod', async function(req,res){
     }
 });
 
+//  更改预约时段状态
+app.post(apiPrefix + '/updateStatus', async function(req,res){
+    const wxToken = await getToken();
+    const doamin = 'https://api.weixin.qq.com/tcb/databaseupdate?access_token=' + wxToken;
+    if (verifyToken(req.body)) {
+        const { token, name, ...rest } = req.body;
+        let a = await ownTool.netModel.post(doamin, 
+            {
+                env: 'test-psy-qktuk',
+                query: 'db.collection(\"interviewee\").doc("' +req.body._id + '").update({data:{status: "' + req.body.status + '"}})'
+            }
+        )
+        res.send(a);
+    } else {
+        errorSend(res);
+    }
+});
+
 //拉取当前用户的时段
 app.post(apiPrefix + '/queryPeriod', async function(req,res){
     const wxToken = await getToken();
@@ -250,10 +230,8 @@ app.post(apiPrefix + '/queryPeriod', async function(req,res){
 
 //拉取用户信息接口 
 app.post(apiPrefix + '/currentUser', async function(req,res){
-    let answer = '';
     const { name, token = '' } = req.body;
     const wxToken = await getToken();
-    console.log(req.body, 'body');
     const doamin = 'https://api.weixin.qq.com/tcb/databasequery?access_token=' + wxToken;
     if (verifyToken(req.body)) {
         // let a = await ownTool.netModel.post(doamin, {
