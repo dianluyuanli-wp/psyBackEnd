@@ -190,6 +190,23 @@ app.post(apiPrefix + '/queryPeriod', async function(req,res){
     }
 });
 
+//更新用户信息
+app.post(apiPrefix + '/updateUser', async function(req,res){
+    const wxToken = await getToken();
+    const doamin = 'https://api.weixin.qq.com/tcb/databaseupdate?access_token=' + wxToken;
+    if (verifyToken(req.body)) {
+        const { token, ...rest } = req.body;
+        let a = await ownTool.netModel.post(doamin, {
+            env: 'test-psy-qktuk',
+            query: 'db.collection(\"userDetail\").where({name:"' + req.body.name + '"}).' +
+            'update({data:' + JSON.stringify(rest) + '})'
+        })
+        res.send(a);
+    } else {
+        errorSend(res);
+    }
+});
+
 //拉取用户信息接口 
 app.post(apiPrefix + '/currentUser', async function(req,res){
     const { name, token = '' } = req.body;
