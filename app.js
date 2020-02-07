@@ -5,6 +5,8 @@ var bodyParser = require('body-parser');
 let mongoose = require('mongoose');
 let ownTool = require('xiaohuli-package');
 let { Animal, BookInfo } = require('./modle');
+const { Upload } = require('./postImg');
+let fs = require('fs');
 
 var jwt = require('jwt-simple');
 const secret = 'xiaohuli';
@@ -115,18 +117,6 @@ app.post(apiPrefix + '/login', async function(req,res){
         });
     }
 });
-const aa = {
-    name: 'wang',
-    showName: '',
-    avatar: 'https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png',
-    userid: '00000001',
-    email: 'antdesign@alipay.com',
-    signature: '海纳百川，有容乃大',
-    title: '交互专家',
-    group: '蚂蚁金服－某某某事业群－某某平台部－某某技术部－UED',
-    country: 'China',
-    phone: '0752-268888888',
-};
 
 const errorSend = (res) => {
     res.send({
@@ -202,6 +192,65 @@ app.post(apiPrefix + '/updateUser', async function(req,res){
             'update({data:' + JSON.stringify(rest) + '})'
         })
         res.send(a);
+    } else {
+        errorSend(res);
+    }
+});
+
+//  更新用户头像
+app.post(apiPrefix + '/updateAvatar', async function(req,res){
+    const wxToken = await getToken();
+    const doamin = 'https://api.weixin.qq.com/tcb/uploadfile?access_token=' + wxToken;
+    if (verifyToken(req.body)) {
+        const { token, base64 : originDataUrl, ...rest } = req.body;
+        var base64 = originDataUrl.replace(/^data:image\/\w+;base64,/, "");//去掉图片base64码前面部分data:image/png;base64
+        var dataBuffer = new Buffer(base64, 'base64'); //把base64码转成buffer对象，
+        fs.writeFile('temp.png',dataBuffer,function(err){//用fs写入文件
+            if(err){
+                console.log(err);
+            }else{
+                console.log('写入成功！');
+            }
+        })
+        //  删除掉老文件
+        // fs.readdirSync('../chat/dist/avatar').map((item) => {
+        //     if (eval('/' + i_am + '_avatar_/ig').exec(item)) {
+        //         fs.unlink('../chat/dist/avatar/' + item, (e) => {
+        //             if(e) {
+        //                 console.log(e);
+        //             }
+        //         })
+        //     }
+        // })
+
+        let a = await ownTool.netModel.post(doamin, {
+            env: 'test-psy-qktuk',
+            path: 'temp.png'
+            //  query: fs.createReadStream('temp.png')
+        })
+        const { authorization, url, token: newToken, cos_file_id} = a;
+        console.log(a, fs.createReadStream('temp.png'));
+        // var reader = new FileReader();
+        // let buffer;
+        // reader.onload = function(e) {
+        //     buffer = reader.result;
+        // }
+        // reader.readAsBinaryString(file);
+        //  ownTool.netModel.post await Upload
+
+        let b = await Upload(url, {
+            //env: 'test-psy-qktuk',
+            key: 'temp.png',
+            Signature: authorization,
+            'x-cos-security-token': newToken,
+            'x-cos-meta-fileid': cos_file_id,
+            file: {
+                value: fs.createReadStream('temp.png')
+            }
+            //  query: fs.createReadStream('temp.png')
+        })
+        console.log(b);
+        res.send(b);
     } else {
         errorSend(res);
     }
