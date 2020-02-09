@@ -16,6 +16,8 @@
         "express": "^4.16.4",
         "jwt-simple": "^0.5.6",
         "mongoose": "^5.4.0",
+        "request": "^2.88.0",
+        "request-promise": "^4.2.5",
         "socket.io": "^2.2.0",
         "xiaohuli-package": "^1.0.9"
     },
