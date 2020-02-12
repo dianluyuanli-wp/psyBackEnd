@@ -4,10 +4,9 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 let mongoose = require('mongoose');
 let ownTool = require('xiaohuli-package');
-let { Animal, BookInfo } = require('./modle');
-//const { Upload } = require('./postImg');
 let fs = require('fs');
 const request = require('request-promise');
+//  const { Upload } = require('./postImg');
 
 var jwt = require('jwt-simple');
 const secret = 'xiaohuli';
@@ -83,7 +82,6 @@ app.post(apiPrefix + '/query', async function(req,res){
     const token = await getToken();
     const doamin = 'https://api.weixin.qq.com/tcb/databasequery?access_token=' + token;
     let a = await ownTool.netModel.post(doamin, {
-        //access_token: token,
         env: 'test-psy-qktuk',
         query: req.body.query
     })
@@ -239,6 +237,20 @@ app.post(apiPrefix + '/updateAvatar', async function(req,res){
                 }
             }
         }
+        // const formData = new FormData();
+        // await Upload(url, {
+        //     "Signature": authorization,
+        //     "key": imgName,
+        //     "x-cos-security-token": newToken,
+        //     "x-cos-meta-fileid": cos_file_id,
+        //     "file": {
+        //         value: fs.createReadStream(imgName),
+        //         options: {
+        //             filename: 'test',
+        //             //contentType: file.type
+        //         }
+        //     }
+        // });
         await request(option);
         //  获取图片的下载链接
         const getDownDomain = 'https://api.weixin.qq.com/tcb/batchdownloadfile?access_token=' + wxToken;
@@ -263,12 +275,10 @@ app.post(apiPrefix + '/updateAvatar', async function(req,res){
 
 //拉取用户信息接口 
 app.post(apiPrefix + '/currentUser', async function(req,res){
-    const { name, token = '' } = req.body;
     const wxToken = await getToken();
     const doamin = 'https://api.weixin.qq.com/tcb/databasequery?access_token=' + wxToken;
     if (verifyToken(req.body)) {
         let a = await ownTool.netModel.post(doamin, {
-            //access_token: token,
             env: 'test-psy-qktuk',
             query: 'db.collection(\"userDetail\").where({name:"' + req.body.name + '"}).get()'
         })
