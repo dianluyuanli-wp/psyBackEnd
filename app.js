@@ -2,7 +2,6 @@ var express=require('express');
 var app =express();
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
-let mongoose = require('mongoose');
 let ownTool = require('xiaohuli-package');
 let fs = require('fs');
 const request = require('request-promise');
@@ -31,16 +30,6 @@ let accessObj = {
     period: 0,
     getTimeStamp: 0
 };
-
-// mongoose.connect('mongodb://@127.0.0.1:27017/psy',
-// { useNewUrlParser: true });
-
-// let db = mongoose.connection;
-// db.on('error', console.error.bind(console, 'connection error:'));
-// db.once('open', function() {
-//   // we're connected!
-//   console.log('success!');
-// });
 
 var domain = 'https://api.weixin.qq.com/sns/jscode2session';
 var para = {
