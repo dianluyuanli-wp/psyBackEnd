@@ -78,16 +78,19 @@ app.post(apiPrefix + '/query', async function(req,res){
     res.json(a);
 });
 
-//登陆接口 
-app.post(apiPrefix + '/login', async function(req,res){
-    let answer = '';
-    const { password, userName, type } = req.body;
+const getUserAndPass = async function(userName) {
     const token = await getToken();
     const doamin = 'https://api.weixin.qq.com/tcb/databasequery?access_token=' + token;
-    let a = await ownTool.netModel.post(doamin, {
+    return await ownTool.netModel.post(doamin, {
         env: 'test-psy-qktuk',
         query: 'db.collection(\"user\").where({name:"' + userName + '"}).get()'
     })
+}
+
+//登陆接口 
+app.post(apiPrefix + '/login', async function(req,res){
+    const { password, userName, type } = req.body;
+    let a = await getUserAndPass(userName);
     if (a.errmsg === 'ok' && JSON.parse(a.data).secret === password) {
         res.send({
             status: 'ok',
@@ -163,6 +166,29 @@ app.post(apiPrefix + '/queryPeriod', async function(req,res){
             'skip(' + offset +').limit(' + size + ').orderBy("date","desc").get()'
         })
         res.send(a);
+    } else {
+        errorSend(res);
+    }
+});
+
+//更新密码
+app.post(apiPrefix + '/updatePassWord', async function(req,res){
+    const wxToken = await getToken();
+    const { name, oldPass, newPass } = req.body;
+    const doamin = 'https://api.weixin.qq.com/tcb/databaseupdate?access_token=' + wxToken;
+    if (verifyToken(req.body)) {
+        const result = await getUserAndPass(name);
+        let updateRes;
+        if (result.errmsg === 'ok' && JSON.parse(result.data).secret === oldPass) {
+            updateRes = await ownTool.netModel.post(doamin, {
+                env: 'test-psy-qktuk',
+                query: 'db.collection(\"user\").where({name:"' + name + '"}).' +
+                'update({data: {secret:' + newPass + '}})'
+            })
+            res.send(updateRes);
+        } else {
+            res.send({errmsg: 'error'});
+        }
     } else {
         errorSend(res);
     }
@@ -288,6 +314,7 @@ app.post(apiPrefix + '/getInterviewerList', async function(req,res){
     const wxToken = await getToken();
     const doamin = 'https://api.weixin.qq.com/tcb/databasequery?access_token=' + wxToken;
     if (verifyToken(req.body)) {
+
         const result = await ownTool.netModel.post(doamin, {
             //access_token: token,
             env: 'test-psy-qktuk',
@@ -300,7 +327,7 @@ app.post(apiPrefix + '/getInterviewerList', async function(req,res){
 });
  
 //配置服务端口
- 
+
 let PORT = process.env.PORT || 4000;
 var server = app.listen(PORT, function () {
  
