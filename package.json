@@ -4,7 +4,8 @@
     "private": true,
     "sideEffects": false,
     "scripts": {
-        "start": "node app.js"
+        "start": "node app.js",
+        "dev": "nodemon app.js"
     },
     "dependencies": {
         "@babel/core": "^7.1.2",

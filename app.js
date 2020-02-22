@@ -78,20 +78,20 @@ app.post(apiPrefix + '/query', async function(req,res){
     res.json(a);
 });
 
-const getUserAndPass = async function(userName) {
+const loginVerify = async function(userName, password) {
     const token = await getToken();
     const doamin = 'https://api.weixin.qq.com/tcb/databasequery?access_token=' + token;
-    return await ownTool.netModel.post(doamin, {
+    const request =  await ownTool.netModel.post(doamin, {
         env: 'test-psy-qktuk',
         query: 'db.collection(\"user\").where({name:"' + userName + '"}).get()'
     })
+    return request.errmsg === 'ok' && JSON.parse(request.data).secret.toString() === password
 }
 
 //登陆接口 
 app.post(apiPrefix + '/login', async function(req,res){
     const { password, userName, type } = req.body;
-    let a = await getUserAndPass(userName);
-    if (a.errmsg === 'ok' && JSON.parse(a.data).secret === password) {
+    if (await loginVerify(userName, password)) {
         res.send({
             status: 'ok',
             type,
@@ -177,9 +177,8 @@ app.post(apiPrefix + '/updatePassWord', async function(req,res){
     const { name, oldPass, newPass } = req.body;
     const doamin = 'https://api.weixin.qq.com/tcb/databaseupdate?access_token=' + wxToken;
     if (verifyToken(req.body)) {
-        const result = await getUserAndPass(name);
         let updateRes;
-        if (result.errmsg === 'ok' && JSON.parse(result.data).secret === oldPass) {
+        if (await loginVerify(name, oldPass)) {
             updateRes = await ownTool.netModel.post(doamin, {
                 env: 'test-psy-qktuk',
                 query: 'db.collection(\"user\").where({name:"' + name + '"}).' +
@@ -318,7 +317,7 @@ app.post(apiPrefix + '/getInterviewerList', async function(req,res){
         const result = await ownTool.netModel.post(doamin, {
             //access_token: token,
             env: 'test-psy-qktuk',
-            query: 'db.collection(\"interviewee\").where({counselorId:"' + req.body.name + '"}).get()'
+            query: 'db.collection(\"interviewee\").where({counselorId:"' + req.body.name + '"}).orderBy("formData.date","desc").get()'
         })
         res.send(result);
     } else {
