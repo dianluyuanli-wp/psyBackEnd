@@ -1,11 +1,12 @@
 let ownTool = require('xiaohuli-package');
 const { getToken, verifyToken, apiPrefix, errorSend } = require('../baseUtil');
+const { updateApi, addApi, queryApi } = require('./apiDomain');
 
 function reqisterPeriodAPI(app) {
     //  添加一个预约时段
     app.post(apiPrefix + '/addPeriod', async function(req,res){
         const wxToken = await getToken();
-        const doamin = 'https://api.weixin.qq.com/tcb/databaseadd?access_token=' + wxToken;
+        const doamin = addApi + wxToken;
         if (verifyToken(req.body)) {
             const { token, name, ...rest } = req.body;
             let a = await ownTool.netModel.post(doamin, 
@@ -22,7 +23,7 @@ function reqisterPeriodAPI(app) {
     //  拉取当前用户的时段
     app.post(apiPrefix + '/queryPeriod', async function(req,res){
         const wxToken = await getToken();
-        const doamin = 'https://api.weixin.qq.com/tcb/databasequery?access_token=' + wxToken;
+        const doamin = queryApi + wxToken;
         if (verifyToken(req.body)) {
             const { offset, size } = req.body;
             let a = await ownTool.netModel.post(doamin, {
@@ -39,7 +40,7 @@ function reqisterPeriodAPI(app) {
     //更新用户的时段的状态
     app.post(apiPrefix + '/updatePeriod', async function(req,res){
         const wxToken = await getToken();
-        const doamin = 'https://api.weixin.qq.com/tcb/databaseupdate?access_token=' + wxToken;
+        const doamin = updateApi + wxToken;
         if (verifyToken(req.body)) {
             const { name, token, _id, ...reset } = req.body;
             let a = await ownTool.netModel.post(doamin, {

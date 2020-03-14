@@ -2,13 +2,14 @@ let ownTool = require('xiaohuli-package');
 let fs = require('fs');
 const request = require('request-promise');
 const { getToken, verifyToken, apiPrefix, errorSend } = require('../baseUtil');
+const { updateApi, uploadApi, downLoadApi } = require('./apiDomain');
 
 function reqisterUserAPI(app) {
     //更新密码
     app.post(apiPrefix + '/updatePassWord', async function(req,res){
         const wxToken = await getToken();
         const { name, oldPass, newPass } = req.body;
-        const doamin = 'https://api.weixin.qq.com/tcb/databaseupdate?access_token=' + wxToken;
+        const doamin = updateApi + wxToken;
         if (verifyToken(req.body)) {
             let updateRes;
             if (await loginVerify(name, oldPass)) {
@@ -29,7 +30,7 @@ function reqisterUserAPI(app) {
     //更新用户信息
     app.post(apiPrefix + '/updateUser', async function(req,res){
         const wxToken = await getToken();
-        const doamin = 'https://api.weixin.qq.com/tcb/databaseupdate?access_token=' + wxToken;
+        const doamin = updateApi + wxToken;
         if (verifyToken(req.body)) {
             const { token, ...rest } = req.body;
             let a = await ownTool.netModel.post(doamin, {
@@ -46,7 +47,7 @@ function reqisterUserAPI(app) {
     //  更新用户头像
     app.post(apiPrefix + '/updateAvatar', async function(req,res){
         const wxToken = await getToken();
-        const doamin = 'https://api.weixin.qq.com/tcb/uploadfile?access_token=' + wxToken;
+        const doamin = uploadApi + wxToken;
         if (verifyToken(req.body)) {
             const { token, name, base64 : originDataUrl, ...rest } = req.body;
             var base64 = originDataUrl.replace(/^data:image\/\w+;base64,/, "");//去掉图片base64码前面部分data:image/png;base64
@@ -86,7 +87,7 @@ function reqisterUserAPI(app) {
             }
             await request(option);
             //  获取图片的下载链接
-            const getDownDomain = 'https://api.weixin.qq.com/tcb/batchdownloadfile?access_token=' + wxToken;
+            const getDownDomain = downLoadApi + wxToken;
             let imgInfo = await ownTool.netModel.post(getDownDomain, {
                 env: 'test-psy-qktuk',
                 file_list: [{
