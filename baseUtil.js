@@ -1,5 +1,6 @@
 let ownTool = require('xiaohuli-package');
 var jwt = require('jwt-simple');
+const { queryApi } = require('./Api/apiDomain');
 
 const secret = 'xiaohuli';
 const apiPrefix = '/api';
@@ -41,6 +42,20 @@ const getToken = async () => {
     } 
 }
 
+const loginVerify = async function(userName, password) {
+    const token = await getToken();
+    const doamin = queryApi + token;
+    const request =  await ownTool.netModel.post(doamin, {
+        env: 'test-psy-qktuk',
+        query: 'db.collection(\"user\").where({name:"' + userName + '"}).get()'
+    })
+    const resObj = JSON.parse(request.data);
+    return {
+        verifyResult: request.errmsg === 'ok' && resObj.secret.toString() === password,
+        identity: resObj.identity
+    }
+}
+
 const outOfDatePeriod = 2 * 60 * 60 * 1000;
 
 const verifyToken = ({name, token = ''}) => {
@@ -53,3 +68,4 @@ exports.verifyToken = verifyToken;
 exports.secret = secret;
 exports.apiPrefix = apiPrefix;
 exports.errorSend = errorSend;
+exports.loginVerify = loginVerify;

@@ -1,8 +1,35 @@
 let ownTool = require('xiaohuli-package');
 let fs = require('fs');
 const request = require('request-promise');
-const { getToken, verifyToken, apiPrefix, errorSend } = require('../baseUtil');
+const fse = require('fs-extra');
+const path = require('path');
+const multiparty = require('multiparty');
+const { getToken, verifyToken, apiPrefix, errorSend, loginVerify } = require('../baseUtil');
 const { updateApi, uploadApi, downLoadApi } = require('./apiDomain');
+
+const UPLOAD_DIR = path.resolve(__dirname, "..", "target"); // 大文件存储目录
+
+const pipeStream = (path, WritableStream) => 
+    new Promise(resolve => {
+        const readStream = fse.createReadStream(path);
+        readStream.on('end', () => {
+            fse.unlinkSync(path);
+            resolve()
+        });
+        readStream.pipe(WritableStream);
+    })
+
+const mergeFileChunk = async (filePath, fileName, size) => {
+    const chunkDir = path.resolve(UPLOAD_DIR, fileName);
+    const chunkPaths = await fse.readdir(chunkDir);
+    chunkPaths.sort((a, b) => a.split('-')[1] - b.split('-')[1]);
+    await Promise.all(chunkPaths.map((chunkPath, index) =>
+        pipeStream(path.resolve(chunkPaths, chunkPath),
+            fse.createWriteStream(filePath, { start: index * size, end: (index + 1) * size })
+        )
+    ));
+    fse.removeSync(chunkDir);
+}
 
 function reqisterUserAPI(app) {
     //更新密码
@@ -12,7 +39,7 @@ function reqisterUserAPI(app) {
         const doamin = updateApi + wxToken;
         if (verifyToken(req.body)) {
             let updateRes;
-            if (await loginVerify(name, oldPass)) {
+            if ((await loginVerify(name, oldPass)).verifyResult) {
                 updateRes = await ownTool.netModel.post(doamin, {
                     env: 'test-psy-qktuk',
                     query: 'db.collection(\"user\").where({name:"' + name + '"}).' +
@@ -106,6 +133,39 @@ function reqisterUserAPI(app) {
             errorSend(res);
         }
     });
+
+    //  上传文件
+    app.post(apiPrefix + '/uploadFile', async function(req, res) {
+        const multipart = new multiparty.Form();
+        multipart.parse(req, async (err, fields, files) => {
+            if (err) {
+                return;
+            }
+            const [chunk] = files.chunk;
+            const [hash] = fields.hash;
+            const [filename] = fields.filename
+            const chunkDir = path.resolve(UPLOAD_DIR, filename);
+
+            if (!fse.existsSync(chunkDir)) {
+                await fse.mkdirs(chunkDir);
+            }
+
+            await fse.move(chunk.path, `${chunkDir}/${hash}`);
+            res.end('received file chunk');
+        })
+    })
+
+    //  合并文件
+    app.post(apiPrefix + '/fileMergeReq', async function(req, res) {
+        if (verifyToken(req.body)) {
+            const { name, size } = req.body;
+            const filePath = path.resolve(UPLOAD_DIR, `${fileName}`);
+            await mergeFileChunk(filePath, name);
+            res.send('merge success');
+        } else {
+            errorSend(res);
+        }
+    })
 }
 
 exports.reqisterUserAPI = reqisterUserAPI;

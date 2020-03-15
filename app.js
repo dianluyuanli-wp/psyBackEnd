@@ -3,10 +3,11 @@ var app =express();
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 let ownTool = require('xiaohuli-package');
-const { getToken, verifyToken, secret, apiPrefix, errorSend } = require('./baseUtil');
+const { getToken, verifyToken, secret, apiPrefix, errorSend, loginVerify } = require('./baseUtil');
 const { reqisterPeriodAPI } = require('./Api/period');
 const { reqisterUserAPI } = require('./Api/user');
 const { reqisterInterviewerAPI } = require('./Api/interviewer');
+const { queryApi } = require('./Api/apiDomain');
 
 var jwt = require('jwt-simple');
 
@@ -28,36 +29,15 @@ reqisterPeriodAPI(app);
 reqisterUserAPI(app);
 reqisterInterviewerAPI(app);
 
-//写个接口123 get请求
-app.post(apiPrefix + '/query', async function(req,res){
-    const token = await getToken();
-    const doamin = 'https://api.weixin.qq.com/tcb/databasequery?access_token=' + token;
-    let a = await ownTool.netModel.post(doamin, {
-        env: 'test-psy-qktuk',
-        query: req.body.query
-    })
-    res.status(200),
-    res.json(a);
-});
-
-const loginVerify = async function(userName, password) {
-    const token = await getToken();
-    const doamin = 'https://api.weixin.qq.com/tcb/databasequery?access_token=' + token;
-    const request =  await ownTool.netModel.post(doamin, {
-        env: 'test-psy-qktuk',
-        query: 'db.collection(\"user\").where({name:"' + userName + '"}).get()'
-    })
-    return request.errmsg === 'ok' && JSON.parse(request.data).secret.toString() === password
-}
-
 //登陆接口 
 app.post(apiPrefix + '/login', async function(req,res){
     const { password, userName, type } = req.body;
-    if (await loginVerify(userName, password)) {
+    const verifyObj = await loginVerify(userName, password);
+    if (verifyObj.verifyResult) {
         res.send({
             status: 'ok',
             type,
-            currentAuthority: 'user',
+            currentAuthority: verifyObj.identity,
             //  用户请求的鉴权token
             accessToken: jwt.encode(Object.assign(req.body, { tokenTimeStamp: Date.now() } ), secret)
         });
@@ -74,7 +54,7 @@ app.post(apiPrefix + '/login', async function(req,res){
 //拉取用户信息接口 
 app.post(apiPrefix + '/currentUser', async function(req,res){
     const wxToken = await getToken();
-    const doamin = 'https://api.weixin.qq.com/tcb/databasequery?access_token=' + wxToken;
+    const doamin = queryApi + wxToken;
     if (verifyToken(req.body)) {
         let a = await ownTool.netModel.post(doamin, {
             env: 'test-psy-qktuk',
