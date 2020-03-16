@@ -4,19 +4,23 @@ const request = require('request-promise');
 const fse = require('fs-extra');
 const path = require('path');
 const multiparty = require('multiparty');
+const os = require('os');
 const { getToken, verifyToken, apiPrefix, errorSend, loginVerify } = require('../baseUtil');
 const { updateApi, uploadApi, downLoadApi } = require('./apiDomain');
 
 const UPLOAD_DIR = path.resolve(__dirname, "..", "target"); // 大文件存储目录
 
-const pipeStream = (path, WritableStream) => 
+const regWin = /window/i;
+const parsePath = (route) => regWin.test(os.type()) ? route.replace(/\\/, '/') : route;
+
+const pipeStream = (path, writableStream) => 
     new Promise(resolve => {
-        const readStream = fse.createReadStream(path);
+        const readStream = fse.createReadStream(parsePath(path));
         readStream.on('end', () => {
             fse.unlinkSync(path);
             resolve()
         });
-        readStream.pipe(WritableStream);
+        readStream.pipe(writableStream);
     })
 
 const mergeFileChunk = async (filePath, fileName, size) => {
@@ -24,8 +28,9 @@ const mergeFileChunk = async (filePath, fileName, size) => {
     const chunkPaths = await fse.readdir(chunkDir);
     chunkPaths.sort((a, b) => a.split('-')[1] - b.split('-')[1]);
     await Promise.all(chunkPaths.map((chunkPath, index) =>
-        pipeStream(path.resolve(chunkPaths, chunkPath),
-            fse.createWriteStream(filePath, { start: index * size, end: (index + 1) * size })
+        pipeStream(path.resolve(chunkDir, chunkPath),
+            fse.createWriteStream(parsePath(filePath), { start: index * size, end: (index + 1) * size })
+            //  fse.createWriteStream(filePath)
         )
     ));
     fse.removeSync(chunkDir);
@@ -158,9 +163,9 @@ function reqisterUserAPI(app) {
     //  合并文件
     app.post(apiPrefix + '/fileMergeReq', async function(req, res) {
         if (verifyToken(req.body)) {
-            const { name, size } = req.body;
+            const { fileName, size } = req.body;
             const filePath = path.resolve(UPLOAD_DIR, `${fileName}`);
-            await mergeFileChunk(filePath, name);
+            await mergeFileChunk(filePath, fileName, size);
             res.send('merge success');
         } else {
             errorSend(res);
