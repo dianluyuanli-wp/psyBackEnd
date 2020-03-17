@@ -4,18 +4,18 @@ const request = require('request-promise');
 const fse = require('fs-extra');
 const path = require('path');
 const multiparty = require('multiparty');
-const os = require('os');
+//  const os = require('os');
 const { getToken, verifyToken, apiPrefix, errorSend, loginVerify } = require('../baseUtil');
 const { updateApi, uploadApi, downLoadApi } = require('./apiDomain');
 
 const UPLOAD_DIR = path.resolve(__dirname, "..", "target"); // 大文件存储目录
 
-const regWin = /window/i;
-const parsePath = (route) => regWin.test(os.type()) ? route.replace(/\\/, '/') : route;
+// const regWin = /window/i;
+// const parsePath = (route) => regWin.test(os.type()) ? route.replace(/\\/g, '/') : route;
 
 const pipeStream = (path, writableStream) => 
     new Promise(resolve => {
-        const readStream = fse.createReadStream(parsePath(path));
+        const readStream = fse.createReadStream(path);
         readStream.on('end', () => {
             fse.unlinkSync(path);
             resolve()
@@ -29,11 +29,14 @@ const mergeFileChunk = async (filePath, fileName, size) => {
     chunkPaths.sort((a, b) => a.split('-')[1] - b.split('-')[1]);
     await Promise.all(chunkPaths.map((chunkPath, index) =>
         pipeStream(path.resolve(chunkDir, chunkPath),
-            fse.createWriteStream(parsePath(filePath), { start: index * size, end: (index + 1) * size })
-            //  fse.createWriteStream(filePath)
+            fse.createWriteStream(filePath, { start: index * size, end: (index + 1) * size })
         )
     ));
+    //  反复改名啥的很奇怪，但是不这样就会有报错，导致请求返回pending，可能是windows下的bug
+    await fse.move(filePath, path.resolve(UPLOAD_DIR, `p${fileName}`));
     fse.removeSync(chunkDir);
+    await fse.move(path.resolve(UPLOAD_DIR, `p${fileName}`), path.resolve(UPLOAD_DIR, `w${fileName}`));
+    await fse.move(path.resolve(UPLOAD_DIR, `w${fileName}`), path.resolve(UPLOAD_DIR, `${fileName}`));
 }
 
 function reqisterUserAPI(app) {
@@ -164,7 +167,7 @@ function reqisterUserAPI(app) {
     app.post(apiPrefix + '/fileMergeReq', async function(req, res) {
         if (verifyToken(req.body)) {
             const { fileName, size } = req.body;
-            const filePath = path.resolve(UPLOAD_DIR, `${fileName}`);
+            const filePath = path.resolve(UPLOAD_DIR, `${fileName}`, `${fileName}`);
             await mergeFileChunk(filePath, fileName, size);
             res.send('merge success');
         } else {
