@@ -32,11 +32,17 @@ const mergeFileChunk = async (filePath, fileName, size) => {
             fse.createWriteStream(filePath, { start: index * size, end: (index + 1) * size })
         )
     ));
-    //  反复改名啥的很奇怪，但是不这样就会有报错，导致请求返回pending，可能是windows下的bug
-    await fse.move(filePath, path.resolve(UPLOAD_DIR, `p${fileName}`));
-    fse.removeSync(chunkDir);
-    await fse.move(path.resolve(UPLOAD_DIR, `p${fileName}`), path.resolve(UPLOAD_DIR, `w${fileName}`));
-    await fse.move(path.resolve(UPLOAD_DIR, `w${fileName}`), path.resolve(UPLOAD_DIR, `${fileName}`));
+    try {
+        //  反复改名啥的很奇怪，但是不这样就会有报错，导致请求返回pending，可能是windows下的bug
+        //  文件夹的名字和文件名字不能重复
+        await fse.move(filePath, path.resolve(UPLOAD_DIR, `p${fileName}`));
+        fse.removeSync(chunkDir);
+        await fse.move(path.resolve(UPLOAD_DIR, `p${fileName}`), path.resolve(UPLOAD_DIR, `${fileName}`));
+    } catch(e) {
+        //  不管怎么操作这里都会有神秘报错，errno: -4048 目测是权限或者缓存问题
+        console.log(e);
+        await fse.move(path.resolve(UPLOAD_DIR, `p${fileName}`), path.resolve(UPLOAD_DIR, `${fileName}`));
+    }
 }
 
 function reqisterUserAPI(app) {
