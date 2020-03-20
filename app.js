@@ -7,6 +7,7 @@ const { getToken, verifyToken, secret, apiPrefix, errorSend, loginVerify } = req
 const { reqisterPeriodAPI } = require('./Api/period');
 const { reqisterUserAPI } = require('./Api/user');
 const { reqisterInterviewerAPI } = require('./Api/interviewer');
+const { registerPageManagerAPI } = require('./Api/pageManager');
 const { queryApi } = require('./Api/apiDomain');
 
 var jwt = require('jwt-simple');
@@ -28,6 +29,7 @@ app.all('*', function(req, res, next) {
 reqisterPeriodAPI(app);
 reqisterUserAPI(app);
 reqisterInterviewerAPI(app);
+registerPageManagerAPI(app);
 
 //登陆接口 
 app.post(apiPrefix + '/login', async function(req,res){

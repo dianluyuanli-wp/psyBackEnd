@@ -45,6 +45,53 @@ const mergeFileChunk = async (filePath, fileName, size) => {
     }
 }
 
+async function uploadToCloud(filePath, fileName) {
+    const wxToken = await getToken();
+    const fullPath = path.resolve(filePath, fileName);
+    const doamin = uploadApi + wxToken;
+    //  获取图片上传相关信息
+    let a = await ownTool.netModel.post(doamin, {
+        env: 'test-psy-qktuk',
+        path: fileName
+    })
+    const { authorization, url, token: newToken, cos_file_id, file_id} = a;
+    //  真正上传图片
+    const option = {
+        method: 'POST',
+        uri: url,
+        formData: {
+            "Signature": authorization,
+            "key": fileName,
+            "x-cos-security-token": newToken,
+            "x-cos-meta-fileid": cos_file_id,
+            "file": {
+                value: fs.createReadStream(fullPath),
+                options: {
+                    filename: 'test',
+                    //contentType: file.type
+                }
+            }
+        }
+    }
+    await request(option);
+    //  获取图片的下载链接
+    const getDownDomain = downLoadApi + wxToken;
+    let imgInfo = await ownTool.netModel.post(getDownDomain, {
+        env: 'test-psy-qktuk',
+        file_list: [{
+            fileid: file_id,
+            max_age: 7200
+        }]
+    });
+    //  server中转的图片删掉
+    fs.unlink(fullPath, (e) => {
+        if(e) {
+            console.log(e);
+        }
+    })
+    return imgInfo;
+}
+
 function reqisterUserAPI(app) {
     //更新密码
     app.post(apiPrefix + '/updatePassWord', async function(req,res){
@@ -87,8 +134,6 @@ function reqisterUserAPI(app) {
 
     //  更新用户头像
     app.post(apiPrefix + '/updateAvatar', async function(req,res){
-        const wxToken = await getToken();
-        const doamin = uploadApi + wxToken;
         if (verifyToken(req.body)) {
             const { token, name, base64 : originDataUrl, ...rest } = req.body;
             var base64 = originDataUrl.replace(/^data:image\/\w+;base64,/, "");//去掉图片base64码前面部分data:image/png;base64
@@ -102,53 +147,14 @@ function reqisterUserAPI(app) {
                     //  console.log('写入成功！');
                 }
             })
-            //  获取图片上传相关信息
-            let a = await ownTool.netModel.post(doamin, {
-                env: 'test-psy-qktuk',
-                path: imgName
-            })
-            const { authorization, url, token: newToken, cos_file_id, file_id} = a;
-            //  真正上传图片
-            const option = {
-                method: 'POST',
-                uri: url,
-                formData: {
-                    "Signature": authorization,
-                    "key": imgName,
-                    "x-cos-security-token": newToken,
-                    "x-cos-meta-fileid": cos_file_id,
-                    "file": {
-                        value: fs.createReadStream(imgName),
-                        options: {
-                            filename: 'test',
-                            //contentType: file.type
-                        }
-                    }
-                }
-            }
-            await request(option);
-            //  获取图片的下载链接
-            const getDownDomain = downLoadApi + wxToken;
-            let imgInfo = await ownTool.netModel.post(getDownDomain, {
-                env: 'test-psy-qktuk',
-                file_list: [{
-                    fileid: file_id,
-                    max_age: 7200
-                }]
-            });
-            //  server中转的图片删掉
-            fs.unlink(imgName, (e) => {
-                if(e) {
-                    console.log(e);
-                }
-            })
+            const imgInfo = await uploadToCloud(imgName);
             res.send(imgInfo);
         } else {
             errorSend(res);
         }
     });
 
-    //  上传文件
+    //  接收上传的文件片段
     app.post(apiPrefix + '/uploadFile', async function(req, res) {
         const multipart = new multiparty.Form();
         multipart.parse(req, async (err, fields, files) => {
@@ -175,7 +181,8 @@ function reqisterUserAPI(app) {
             const { fileName, size } = req.body;
             const filePath = path.resolve(UPLOAD_DIR, `${fileName}`, `${fileName}`);
             await mergeFileChunk(filePath, fileName, size);
-            res.send('merge success');
+            const fileInfo = await uploadToCloud(UPLOAD_DIR, `${fileName}`);
+            res.send(fileInfo);
         } else {
             errorSend(res);
         }
