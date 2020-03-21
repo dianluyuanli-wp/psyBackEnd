@@ -40,7 +40,7 @@ const mergeFileChunk = async (filePath, fileName, size) => {
         await fse.move(path.resolve(UPLOAD_DIR, `p${fileName}`), path.resolve(UPLOAD_DIR, `${fileName}`));
     } catch(e) {
         //  不管怎么操作这里都会有神秘报错，errno: -4048 目测是权限或者缓存问题
-        console.log(e);
+        //  console.log(e);
         await fse.move(path.resolve(UPLOAD_DIR, `p${fileName}`), path.resolve(UPLOAD_DIR, `${fileName}`));
     }
 }
@@ -147,7 +147,7 @@ function reqisterUserAPI(app) {
                     //  console.log('写入成功！');
                 }
             })
-            const imgInfo = await uploadToCloud(imgName);
+            const imgInfo = await uploadToCloud(path.resolve(__dirname, '..'), imgName);
             res.send(imgInfo);
         } else {
             errorSend(res);
