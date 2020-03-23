@@ -35,6 +35,7 @@ async function senMess(infoObj) {
             }
         }
     })
+    console.log(res);
 }
 
 function reqisterInterviewerAPI(app) {
@@ -71,9 +72,18 @@ function reqisterInterviewerAPI(app) {
                     env: 'test-psy-qktuk',
                     query: 'db.collection(\"interviewee\").doc("' + _id + '").get()'
                 });
-            const { openId, counselorName, formData: { date, time} } = JSON.parse(bookInfo.data[0]);
+            const { openId, counselorName, formData: { date, time}, periodId } = JSON.parse(bookInfo.data[0]);
             const mesObj = { sendDomain: sendApi + wxToken, openId, counselorName, date, time, status };
             senMess(mesObj);
+            //  如果操作是确认预约，减库存
+            if (status === 'accept') {
+                let reduce = await ownTool.netModel.post(doamin, 
+                    {
+                        env: 'test-psy-qktuk',
+                        query: 'db.collection(\"period\").doc("' + periodId + '").update({data:{status: "' + 0 + '"}})'
+                    }
+                )
+            }
             res.send(a);
         } else {
             errorSend(res);
