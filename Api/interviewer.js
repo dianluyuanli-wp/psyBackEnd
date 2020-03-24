@@ -80,7 +80,7 @@ function reqisterInterviewerAPI(app) {
                 let reduce = await ownTool.netModel.post(doamin, 
                     {
                         env: 'test-psy-qktuk',
-                        query: 'db.collection(\"period\").doc("' + periodId + '").update({data:{status: "' + 0 + '"}})'
+                        query: 'db.collection(\"period\").doc("' + periodId + '").update({data:{count: "' + 0 + '"}})'
                     }
                 )
             }
