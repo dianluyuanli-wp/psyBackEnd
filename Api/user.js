@@ -6,7 +6,7 @@ const path = require('path');
 const multiparty = require('multiparty');
 //  const os = require('os');
 const { getToken, verifyToken, apiPrefix, errorSend, loginVerify } = require('../baseUtil');
-const { updateApi, uploadApi, downLoadApi } = require('./apiDomain');
+const { updateApi, uploadApi, downLoadApi, queryApi, addApi } = require('./apiDomain');
 
 const UPLOAD_DIR = path.resolve(__dirname, "..", "target"); // 大文件存储目录
 
@@ -120,12 +120,22 @@ function reqisterUserAPI(app) {
         const wxToken = await getToken();
         const doamin = updateApi + wxToken;
         if (verifyToken(req.body)) {
-            const { token, ...rest } = req.body;
-            let a = await ownTool.netModel.post(doamin, {
-                env: 'test-psy-qktuk',
-                query: 'db.collection(\"userDetail\").where({name:"' + req.body.name + '"}).' +
-                'update({data:' + JSON.stringify(rest) + '})'
-            })
+            const { token, targetId, name, ...rest } = req.body;
+            let a;
+            //  如果是改的别人的状态
+            if (targetId) {
+                a = await ownTool.netModel.post(doamin, {
+                    env: 'test-psy-qktuk',
+                    query: 'db.collection(\"userDetail\").where({_id:"' + targetId + '"}).' +
+                    'update({data:' + JSON.stringify(rest) + '})'
+                })
+            } else {
+                a = await ownTool.netModel.post(doamin, {
+                    env: 'test-psy-qktuk',
+                    query: 'db.collection(\"userDetail\").where({name:"' + name + '"}).' +
+                    'update({data:' + JSON.stringify(rest) + '})'
+                })
+            }
             res.send(a);
         } else {
             errorSend(res);
@@ -183,6 +193,66 @@ function reqisterUserAPI(app) {
             await mergeFileChunk(filePath, fileName, size);
             const fileInfo = await uploadToCloud(UPLOAD_DIR, `${fileName}`);
             res.send(fileInfo);
+        } else {
+            errorSend(res);
+        }
+    })
+
+    //  查询所有账号
+    app.post(apiPrefix + '/queryAllUser', async function(req, res) {
+        if (verifyToken(req.body)) {
+            const { offset, size } = req.body;
+            const wxToken = await getToken();
+            const doamin = queryApi + wxToken;
+            let a = await ownTool.netModel.post(doamin, {
+                env: 'test-psy-qktuk',
+                query: 'db.collection(\"userDetail\").' +
+                'skip(' + offset +').limit(' + size + ').get()'
+            })
+            res.send(a);
+        } else {
+            errorSend(res);
+        }
+    })
+
+    //  添加新的用户
+    app.post(apiPrefix + '/addUser', async function(req, res) {
+        if (verifyToken(req.body)) {
+            const { name, identity, createName } = req.body;
+            const wxToken = await getToken();
+            const doamin = addApi + wxToken;
+            //  判断是否有重复
+            const target = await ownTool.netModel.post(queryApi + wxToken, {
+                env: 'test-psy-qktuk',
+                query: 'db.collection(\"userDetail\").where({ name: "' + createName +'"}).get()'
+            })
+            if (target.data.length) {
+                res.send({ errcode: 1 });
+                return;
+            }
+            const newUser = {
+                name: createName,
+                identity,
+                secret: 123
+            }
+            let addUser = await ownTool.netModel.post(doamin, {
+                env: 'test-psy-qktuk',
+                query: 'db.collection(\"user\").add({ data: ' + JSON.stringify(newUser) +'})'
+            })
+            const newUserInfo = {
+                avatar: '',
+                email: '',
+                identity,
+                name: createName,
+                phone: '',
+                showName: createName,
+                userInfo: ''
+            }
+            const addUserInfo = await ownTool.netModel.post(doamin, {
+                env: 'test-psy-qktuk',
+                query: 'db.collection(\"userDetail\").add({ data: ' + JSON.stringify(newUserInfo) +'})'
+            })
+            res.send(addUser);
         } else {
             errorSend(res);
         }
