@@ -5,10 +5,10 @@ var bodyParser = require('body-parser');
 let ownTool = require('xiaohuli-package');
 const { getToken, verifyToken, secret, apiPrefix, errorSend, loginVerify } = require('./baseUtil');
 const { reqisterPeriodAPI } = require('./Api/period');
-const { reqisterUserAPI } = require('./Api/user');
+const { reqisterUserAPI, userIsFreezed } = require('./Api/user');
 const { reqisterInterviewerAPI } = require('./Api/interviewer');
 const { registerPageManagerAPI } = require('./Api/pageManager');
-const { queryApi } = require('./Api/apiDomain');
+const { queryApi, pathNotVerify } = require('./Api/apiDomain');
 
 var jwt = require('jwt-simple');
 
@@ -17,18 +17,32 @@ app.use(cookieParser());
 app.use(bodyParser.urlencoded({extended: true}));
 //设置跨域访问
 app.all('*', function(req, res, next) {
-   res.header("Access-Control-Allow-Origin",  req.headers.origin);
-   res.header("Access-Control-Allow-Credentials", "true");
-   res.header("Access-Control-Allow-Headers", "X-Requested-With,Content-Type,AccessToken");
-   res.header("Access-Control-Allow-Methods","PUT,POST,GET,DELETE,OPTIONS");
-   res.header("X-Powered-By",' 3.2.1');
-   res.header("Content-Type", "application/json;charset=utf-8");
-   next();
+    res.header("Access-Control-Allow-Origin",  req.headers.origin);
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Allow-Headers", "X-Requested-With,Content-Type,AccessToken");
+    res.header("Access-Control-Allow-Methods","PUT,POST,GET,DELETE,OPTIONS");
+    res.header("X-Powered-By",' 3.2.1');
+    res.header("Content-Type", "application/json;charset=utf-8");
+    const rawUrl = req.url;
+    //  统一处理鉴权逻辑
+    if (!pathNotVerify.includes(rawUrl)) {
+        if (verifyToken(req.body)) {
+            next()
+        } else {
+            errorSend(res);
+        }
+    } else {
+        next();
+    }
 });
 
+//  预约时间段的接口
 reqisterPeriodAPI(app);
+//  用户的接口
 reqisterUserAPI(app);
+//  具体预约的接口
 reqisterInterviewerAPI(app);
+//  页面配置的接口
 registerPageManagerAPI(app);
 
 //登陆接口 
@@ -36,6 +50,17 @@ app.post(apiPrefix + '/login', async function(req,res){
     const { password, userName, type } = req.body;
     const verifyObj = await loginVerify(userName, password);
     if (verifyObj.verifyResult) {
+        //  判断是否冻结
+        const isFreezed = await userIsFreezed(userName);
+        if (isFreezed) {
+            res.send({
+                status: 'isFreezed',
+                type,
+                currentAuthority: 'guest',
+                accessToken: ''
+            });
+            return;
+        }
         res.send({
             status: 'ok',
             type,
@@ -57,15 +82,11 @@ app.post(apiPrefix + '/login', async function(req,res){
 app.post(apiPrefix + '/currentUser', async function(req,res){
     const wxToken = await getToken();
     const doamin = queryApi + wxToken;
-    if (verifyToken(req.body)) {
-        let a = await ownTool.netModel.post(doamin, {
-            env: 'test-psy-qktuk',
-            query: 'db.collection(\"userDetail\").where({name:"' + req.body.name + '"}).get()'
-        })
-        res.send(a);
-    } else {
-        errorSend(res);
-    }
+    let a = await ownTool.netModel.post(doamin, {
+        env: 'test-psy-qktuk',
+        query: 'db.collection(\"userDetail\").where({name:"' + req.body.name + '"}).get()'
+    })
+    res.send(a);
 });
  
 //配置服务端口

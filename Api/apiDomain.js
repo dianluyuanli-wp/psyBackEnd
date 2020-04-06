@@ -10,3 +10,5 @@ exports.downLoadApi = 'https://api.weixin.qq.com/tcb/batchdownloadfile?access_to
 exports.addApi = 'https://api.weixin.qq.com/tcb/databaseadd?access_token=';
 //  查询数据
 exports.queryApi = 'https://api.weixin.qq.com/tcb/databasequery?access_token=';
+
+exports.pathNotVerify = ['/api/login', '/api/uploadFile'];

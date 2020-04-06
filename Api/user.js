@@ -92,26 +92,31 @@ async function uploadToCloud(filePath, fileName) {
     return imgInfo;
 }
 
+exports.userIsFreezed = async function(name) {
+    const wxToken = await getToken();
+    const res = await ownTool.netModel.post(queryApi + wxToken, {
+        env: 'test-psy-qktuk',
+        query: 'db.collection(\"userDetail\").where({ name: "' + name +'", isFreezed: true }).get()'
+    })
+    return res.data.length > 0;
+}
+
 function reqisterUserAPI(app) {
     //更新密码
     app.post(apiPrefix + '/updatePassWord', async function(req,res){
         const wxToken = await getToken();
         const { name, oldPass, newPass } = req.body;
         const doamin = updateApi + wxToken;
-        if (verifyToken(req.body)) {
-            let updateRes;
-            if ((await loginVerify(name, oldPass)).verifyResult) {
-                updateRes = await ownTool.netModel.post(doamin, {
-                    env: 'test-psy-qktuk',
-                    query: 'db.collection(\"user\").where({name:"' + name + '"}).' +
-                    'update({data: {secret:' + newPass + '}})'
-                })
-                res.send(updateRes);
-            } else {
-                res.send({errmsg: 'error'});
-            }
+        let updateRes;
+        if ((await loginVerify(name, oldPass)).verifyResult) {
+            updateRes = await ownTool.netModel.post(doamin, {
+                env: 'test-psy-qktuk',
+                query: 'db.collection(\"user\").where({name:"' + name + '"}).' +
+                'update({data: {secret:' + newPass + '}})'
+            })
+            res.send(updateRes);
         } else {
-            errorSend(res);
+            res.send({errmsg: 'error'});
         }
     });
 
@@ -119,49 +124,41 @@ function reqisterUserAPI(app) {
     app.post(apiPrefix + '/updateUser', async function(req,res){
         const wxToken = await getToken();
         const doamin = updateApi + wxToken;
-        if (verifyToken(req.body)) {
-            const { token, targetId, name, ...rest } = req.body;
-            let a;
-            //  如果是改的别人的状态
-            if (targetId) {
-                a = await ownTool.netModel.post(doamin, {
-                    env: 'test-psy-qktuk',
-                    query: 'db.collection(\"userDetail\").where({_id:"' + targetId + '"}).' +
-                    'update({data:' + JSON.stringify(rest) + '})'
-                })
-            } else {
-                a = await ownTool.netModel.post(doamin, {
-                    env: 'test-psy-qktuk',
-                    query: 'db.collection(\"userDetail\").where({name:"' + name + '"}).' +
-                    'update({data:' + JSON.stringify(rest) + '})'
-                })
-            }
-            res.send(a);
+        const { token, targetId, name, ...rest } = req.body;
+        let a;
+        //  如果是改的别人的状态
+        if (targetId) {
+            a = await ownTool.netModel.post(doamin, {
+                env: 'test-psy-qktuk',
+                query: 'db.collection(\"userDetail\").where({_id:"' + targetId + '"}).' +
+                'update({data:' + JSON.stringify(rest) + '})'
+            })
         } else {
-            errorSend(res);
+            a = await ownTool.netModel.post(doamin, {
+                env: 'test-psy-qktuk',
+                query: 'db.collection(\"userDetail\").where({name:"' + name + '"}).' +
+                'update({data:' + JSON.stringify(rest) + '})'
+            })
         }
+        res.send(a);
     });
 
     //  更新用户头像
     app.post(apiPrefix + '/updateAvatar', async function(req,res){
-        if (verifyToken(req.body)) {
-            const { token, name, base64 : originDataUrl, ...rest } = req.body;
-            var base64 = originDataUrl.replace(/^data:image\/\w+;base64,/, "");//去掉图片base64码前面部分data:image/png;base64
-            var dataBuffer = new Buffer(base64, 'base64'); //把base64码转成buffer对象，
-            const imgName = name + '.png';
-            //  把前端传过来的base64转化成本地图片
-            fs.writeFile(imgName, dataBuffer,function(err){//用fs写入文件
-                if(err){
-                    console.log(err);
-                }else{
-                    //  console.log('写入成功！');
-                }
-            })
-            const imgInfo = await uploadToCloud(path.resolve(__dirname, '..'), imgName);
-            res.send(imgInfo);
-        } else {
-            errorSend(res);
-        }
+        const { token, name, base64 : originDataUrl, ...rest } = req.body;
+        var base64 = originDataUrl.replace(/^data:image\/\w+;base64,/, "");//去掉图片base64码前面部分data:image/png;base64
+        var dataBuffer = new Buffer(base64, 'base64'); //把base64码转成buffer对象，
+        const imgName = name + '.png';
+        //  把前端传过来的base64转化成本地图片
+        fs.writeFile(imgName, dataBuffer,function(err){//用fs写入文件
+            if(err){
+                console.log(err);
+            }else{
+                //  console.log('写入成功！');
+            }
+        })
+        const imgInfo = await uploadToCloud(path.resolve(__dirname, '..'), imgName);
+        res.send(imgInfo);
     });
 
     //  接收上传的文件片段
@@ -187,75 +184,63 @@ function reqisterUserAPI(app) {
 
     //  合并文件
     app.post(apiPrefix + '/fileMergeReq', async function(req, res) {
-        if (verifyToken(req.body)) {
-            const { fileName, size } = req.body;
-            const filePath = path.resolve(UPLOAD_DIR, `${fileName}`, `${fileName}`);
-            await mergeFileChunk(filePath, fileName, size);
-            const fileInfo = await uploadToCloud(UPLOAD_DIR, `${fileName}`);
-            res.send(fileInfo);
-        } else {
-            errorSend(res);
-        }
+        const { fileName, size } = req.body;
+        const filePath = path.resolve(UPLOAD_DIR, `${fileName}`, `${fileName}`);
+        await mergeFileChunk(filePath, fileName, size);
+        const fileInfo = await uploadToCloud(UPLOAD_DIR, `${fileName}`);
+        res.send(fileInfo);
     })
 
     //  查询所有账号
     app.post(apiPrefix + '/queryAllUser', async function(req, res) {
-        if (verifyToken(req.body)) {
-            const { offset, size } = req.body;
-            const wxToken = await getToken();
-            const doamin = queryApi + wxToken;
-            let a = await ownTool.netModel.post(doamin, {
-                env: 'test-psy-qktuk',
-                query: 'db.collection(\"userDetail\").' +
-                'skip(' + offset +').limit(' + size + ').get()'
-            })
-            res.send(a);
-        } else {
-            errorSend(res);
-        }
+        const { offset, size } = req.body;
+        const wxToken = await getToken();
+        const doamin = queryApi + wxToken;
+        let a = await ownTool.netModel.post(doamin, {
+            env: 'test-psy-qktuk',
+            query: 'db.collection(\"userDetail\").' +
+            'skip(' + offset +').limit(' + size + ').get()'
+        })
+        res.send(a);
     })
 
     //  添加新的用户
     app.post(apiPrefix + '/addUser', async function(req, res) {
-        if (verifyToken(req.body)) {
-            const { name, identity, createName } = req.body;
-            const wxToken = await getToken();
-            const doamin = addApi + wxToken;
-            //  判断是否有重复
-            const target = await ownTool.netModel.post(queryApi + wxToken, {
-                env: 'test-psy-qktuk',
-                query: 'db.collection(\"userDetail\").where({ name: "' + createName +'"}).get()'
-            })
-            if (target.data.length) {
-                res.send({ errcode: 1 });
-                return;
-            }
-            const newUser = {
-                name: createName,
-                identity,
-                secret: 123
-            }
-            let addUser = await ownTool.netModel.post(doamin, {
-                env: 'test-psy-qktuk',
-                query: 'db.collection(\"user\").add({ data: ' + JSON.stringify(newUser) +'})'
-            })
-            const newUserInfo = {
-                avatar: '',
-                email: '',
-                identity,
-                name: createName,
-                phone: '',
-                showName: createName,
-                userInfo: ''
-            }
-            const addUserInfo = await ownTool.netModel.post(doamin, {
-                env: 'test-psy-qktuk',
-                query: 'db.collection(\"userDetail\").add({ data: ' + JSON.stringify(newUserInfo) +'})'
-            })
-            res.send(addUser);
-        } else {
-            errorSend(res);
+        const { name, identity, createName } = req.body;
+        const wxToken = await getToken();
+        const doamin = addApi + wxToken;
+        //  判断是否有重复
+        const target = await ownTool.netModel.post(queryApi + wxToken, {
+            env: 'test-psy-qktuk',
+            query: 'db.collection(\"userDetail\").where({ name: "' + createName +'"}).get()'
+        })
+        if (target.data.length) {
+            res.send({ errcode: 1 });
+            return;
         }
+        const newUser = {
+            name: createName,
+            identity,
+            secret: 123
+        }
+        let addUser = await ownTool.netModel.post(doamin, {
+            env: 'test-psy-qktuk',
+            query: 'db.collection(\"user\").add({ data: ' + JSON.stringify(newUser) +'})'
+        })
+        const newUserInfo = {
+            avatar: '',
+            email: '',
+            identity,
+            name: createName,
+            phone: '',
+            showName: createName,
+            userInfo: ''
+        }
+        const addUserInfo = await ownTool.netModel.post(doamin, {
+            env: 'test-psy-qktuk',
+            query: 'db.collection(\"userDetail\").add({ data: ' + JSON.stringify(newUserInfo) +'})'
+        })
+        res.send(addUser);
     })
 }
 

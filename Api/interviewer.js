@@ -43,51 +43,41 @@ function reqisterInterviewerAPI(app) {
     app.post(apiPrefix + '/getInterviewerList', async function(req,res){
         const wxToken = await getToken();
         const doamin = queryApi + wxToken;
-        if (verifyToken(req.body)) {
-    
-            const result = await ownTool.netModel.post(doamin, {
-                //access_token: token,
-                env: 'test-psy-qktuk',
-                query: 'db.collection(\"interviewee\").where({counselorId:"' + req.body.name + '"}).orderBy("formData.date","desc").get()'
-            })
-            res.send(result);
-        } else {
-            errorSend(res);
-        }
+        const result = await ownTool.netModel.post(doamin, {
+            env: 'test-psy-qktuk',
+            query: 'db.collection(\"interviewee\").where({counselorId:"' + req.body.name + '"}).orderBy("formData.date","desc").get()'
+        })
+        res.send(result);
     });
     //  更改预约时段状态
     app.post(apiPrefix + '/updateStatus', async function(req,res){
         const wxToken = await getToken();
         const doamin = updateApi + wxToken;
-        if (verifyToken(req.body)) {
-            const { token, name, updateStatus, status, _id, ...rest } = req.body;
-            let a = await ownTool.netModel.post(doamin, 
+        const { token, name, updateStatus, status, _id, ...rest } = req.body;
+        let a = await ownTool.netModel.post(doamin, 
+            {
+                env: 'test-psy-qktuk',
+                query: 'db.collection(\"interviewee\").doc("' + _id + '").update({data:{status: "' + status + '"}})'
+            }
+        )
+        const bookInfo = await ownTool.netModel.post(queryApi + wxToken,
+            {
+                env: 'test-psy-qktuk',
+                query: 'db.collection(\"interviewee\").doc("' + _id + '").get()'
+            });
+        const { openId, counselorName, formData: { date, time}, periodId } = JSON.parse(bookInfo.data[0]);
+        const mesObj = { sendDomain: sendApi + wxToken, openId, counselorName, date, time, status };
+        senMess(mesObj);
+        //  如果操作是确认预约，减库存
+        if (status === 'accept') {
+            let reduce = await ownTool.netModel.post(doamin, 
                 {
                     env: 'test-psy-qktuk',
-                    query: 'db.collection(\"interviewee\").doc("' + _id + '").update({data:{status: "' + status + '"}})'
+                    query: 'db.collection(\"period\").doc("' + periodId + '").update({data:{count: "' + 0 + '"}})'
                 }
             )
-            const bookInfo = await ownTool.netModel.post(queryApi + wxToken,
-                {
-                    env: 'test-psy-qktuk',
-                    query: 'db.collection(\"interviewee\").doc("' + _id + '").get()'
-                });
-            const { openId, counselorName, formData: { date, time}, periodId } = JSON.parse(bookInfo.data[0]);
-            const mesObj = { sendDomain: sendApi + wxToken, openId, counselorName, date, time, status };
-            senMess(mesObj);
-            //  如果操作是确认预约，减库存
-            if (status === 'accept') {
-                let reduce = await ownTool.netModel.post(doamin, 
-                    {
-                        env: 'test-psy-qktuk',
-                        query: 'db.collection(\"period\").doc("' + periodId + '").update({data:{count: "' + 0 + '"}})'
-                    }
-                )
-            }
-            res.send(a);
-        } else {
-            errorSend(res);
         }
+        res.send(a);
     });
 }
 
