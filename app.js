@@ -49,32 +49,27 @@ registerPageManagerAPI(app);
 app.post(apiPrefix + '/login', async function(req,res){
     const { password, userName, type } = req.body;
     const verifyObj = await loginVerify(userName, password);
+    const sendObj = {
+        status: 'error',
+        type,
+        currentAuthority: 'guest',
+        accessToken: ''
+    }
     if (verifyObj.verifyResult) {
         //  判断是否冻结
         const isFreezed = await userIsFreezed(userName);
         if (isFreezed) {
-            res.send({
-                status: 'isFreezed',
-                type,
-                currentAuthority: 'guest',
-                accessToken: ''
-            });
+            res.send(Object.assign({}, sendObj, { status: 'isFreezed'}));
             return;
         }
-        res.send({
+        res.send(Object.assign({}, sendObj, {
             status: 'ok',
-            type,
             currentAuthority: verifyObj.identity,
             //  用户请求的鉴权token
             accessToken: jwt.encode(Object.assign(req.body, { tokenTimeStamp: Date.now() } ), secret)
-        });
+        }))
     } else {
-        res.send({
-            status: 'error',
-            type,
-            currentAuthority: 'guest',
-            accessToken: ''
-        });
+        res.send(sendObj);
     }
 });
 
