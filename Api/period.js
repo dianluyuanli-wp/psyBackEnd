@@ -29,6 +29,18 @@ function reqisterPeriodAPI(app) {
         res.send(a);
     });
 
+    //  拉取时段2 自由控制query
+    app.post(apiPrefix + '/queryPeriodFreely', async function(req,res){
+        const wxToken = await getToken();
+        const doamin = queryApi + wxToken;
+        const { queryString } = req.body;
+        let a = await ownTool.netModel.post(doamin, {
+            env: 'test-psy-qktuk',
+            query: queryString
+        })
+        res.send(a);
+    });
+
     //更新用户的时段的状态
     app.post(apiPrefix + '/updatePeriod', async function(req,res){
         const wxToken = await getToken();
