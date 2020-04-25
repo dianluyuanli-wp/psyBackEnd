@@ -23,7 +23,7 @@ function reqisterPeriodAPI(app) {
         const { offset, size } = req.body;
         let a = await ownTool.netModel.post(doamin, {
             env: 'test-psy-qktuk',
-            query: 'db.collection(\"period\").where({counselorId:"' + req.body.counselorId + '"}).' +
+            query: 'db.collection("period").where({counselorId:"' + req.body.counselorId + '"}).' +
             'skip(' + offset +').limit(' + size + ').orderBy("date","desc").get()'
         })
         res.send(a);
